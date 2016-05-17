@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"github.com/stefankopieczek/gossip/base"
-	"github.com/stefankopieczek/gossip/log"
-	"github.com/stefankopieczek/gossip/utils"
+	"github.com/FireSpotter/gossip/base"
+	"github.com/FireSpotter/gossip/log"
+	"github.com/FireSpotter/gossip/utils"
 )
 
 import (
@@ -953,7 +953,7 @@ func TestViaHeaders(t *testing.T) {
 
 // Basic test of unstreamed parsing, using empty INVITE.
 func TestUnstreamedParse1(t *testing.T) {
-	test := ParserTest{false, []parserTestStep{
+	test := ParserTest{false, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"INVITE sip:bob@biloxi.com SIP/2.0\r\n\r\n",
 			base.NewRequest(base.INVITE,
@@ -970,7 +970,7 @@ func TestUnstreamedParse1(t *testing.T) {
 
 // Test unstreamed parsing with a header and body.
 func TestUnstreamedParse2(t *testing.T) {
-	test := ParserTest{false, []parserTestStep{
+	test := ParserTest{false, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"INVITE sip:bob@biloxi.com SIP/2.0\r\n" +
 			"CSeq: 13 INVITE\r\n" +
@@ -990,7 +990,7 @@ func TestUnstreamedParse2(t *testing.T) {
 
 // Test unstreamed parsing of a base.Request object (rather than a base.Response).
 func TestUnstreamedParse3(t *testing.T) {
-	test := ParserTest{false, []parserTestStep{
+	test := ParserTest{false, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"SIP/2.0 200 OK\r\n" +
 			"CSeq: 2 INVITE\r\n" +
@@ -1012,7 +1012,7 @@ func TestUnstreamedParse3(t *testing.T) {
 func TestUnstreamedParse4(t *testing.T) {
 	callId := base.CallId("cheesecake1729")
 	maxForwards := base.MaxForwards(65)
-	test := ParserTest{false, []parserTestStep{
+	test := ParserTest{false, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"SIP/2.0 200 OK\r\n" +
 			"CSeq: 2 INVITE\r\n" +
@@ -1040,7 +1040,7 @@ func TestUnstreamedParse4(t *testing.T) {
 func TestUnstreamedParse5(t *testing.T) {
 	callId := base.CallId("cheesecake1729")
 	maxForwards := base.MaxForwards(63)
-	test := ParserTest{false, []parserTestStep{
+	test := ParserTest{false, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"SIP/2.0 200 OK\r\n" +
 			"CSeq:   2     \r\n" +
@@ -1065,9 +1065,41 @@ func TestUnstreamedParse5(t *testing.T) {
 	test.Test(t)
 }
 
+
+// Test unstreamed parsing with generic header usage
+func TestUnstreamedGenericHeader(t *testing.T) {
+	callId := base.GenericHeader{"call-id", "cheesecake1729"}
+	maxForwards := base.GenericHeader{"max-forwards", "63"}
+	test := ParserTest{false, true, []parserTestStep{
+		// Steps each have: Input, result, sent error, returned error
+		parserTestStep{"SIP/2.0 200 OK\r\n" +
+			"CSeq:   2     \r\n" +
+			"    INVITE\r\n" +
+			"Call-ID:\tcheesecake1729\r\n" +
+			"Max-Forwards:\t\r\n" +
+			"\t63\r\n" +
+			"\r\n" +
+			"Everything is awesome.",
+			base.NewResponse("SIP/2.0",
+				200,
+				"OK",
+				[]base.SipHeader{
+					&base.GenericHeader{"cseq", "2          INVITE"},
+					&callId,
+					&maxForwards},
+				"Everything is awesome."),
+			nil,
+			nil},
+	}}
+
+	test.Test(t)
+}
+
+
+
 // Test error responses, and responses of minimal length.
 func TestUnstreamedParse6(t *testing.T) {
-	test := ParserTest{false, []parserTestStep{
+	test := ParserTest{false, false, []parserTestStep{
 		parserTestStep{"SIP/2.0 403 Forbidden\r\n\r\n",
 			base.NewResponse("SIP/2.0",
 				403,
@@ -1083,7 +1115,7 @@ func TestUnstreamedParse6(t *testing.T) {
 
 // Test requests of minimal length.
 func TestUnstreamedParse7(t *testing.T) {
-	test := ParserTest{false, []parserTestStep{
+	test := ParserTest{false, false, []parserTestStep{
 		parserTestStep{"ACK sip:foo@bar.com SIP/2.0\r\n\r\n",
 			base.NewRequest(base.ACK,
 				&base.SipUri{false, base.String{"foo"}, base.NoString{}, "bar.com", nil, noParams, noParams},
@@ -1103,7 +1135,7 @@ func TestUnstreamedParse7(t *testing.T) {
 // Basic streamed parsing, using empty INVITE.
 func TestStreamedParse1(t *testing.T) {
 	contentLength := base.ContentLength(0)
-	test := ParserTest{true, []parserTestStep{
+	test := ParserTest{true, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"INVITE sip:bob@biloxi.com SIP/2.0\r\n" +
 			"Content-Length: 0\r\n\r\n",
@@ -1122,7 +1154,7 @@ func TestStreamedParse1(t *testing.T) {
 // Test writing a single message in two stages (breaking after the start line).
 func TestStreamedParse2(t *testing.T) {
 	contentLength := base.ContentLength(0)
-	test := ParserTest{true, []parserTestStep{
+	test := ParserTest{true, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"INVITE sip:bob@biloxi.com SIP/2.0\r\n", nil, nil, nil},
 		parserTestStep{"Content-Length: 0\r\n\r\n",
@@ -1142,7 +1174,7 @@ func TestStreamedParse2(t *testing.T) {
 func TestStreamedParse3(t *testing.T) {
 	contentLength23 := base.ContentLength(23)
 	contentLength33 := base.ContentLength(33)
-	test := ParserTest{true, []parserTestStep{
+	test := ParserTest{true, false, []parserTestStep{
 		// Steps each have: Input, result, sent error, returned error
 		parserTestStep{"INVITE sip:bob@biloxi.com SIP/2.0\r\n", nil, nil, nil},
 		parserTestStep{"Content-Length: 23\r\n\r\n" +
@@ -1324,7 +1356,7 @@ func (expected *headerBlockResult) equals(other result) (equal bool, reason stri
 func parseHeader(rawHeader string) (headers []base.SipHeader, err error) {
 	messages := make(chan base.SipMessage, 0)
 	errors := make(chan error, 0)
-	p := NewParser(messages, errors, false)
+	p := NewParser(messages, errors, false, false)
 	defer func() {
 		log.Debug("Stopping %p", p)
 		p.Stop()
@@ -1783,6 +1815,7 @@ func (expected *viaResult) equals(other result) (equal bool, reason string) {
 
 type ParserTest struct {
 	streamed bool
+	genericHeader bool
 	steps    []parserTestStep
 }
 
@@ -1791,7 +1824,7 @@ func (test *ParserTest) Test(t *testing.T) {
 	output := make(chan base.SipMessage)
 	errs := make(chan error)
 
-	p := NewParser(output, errs, test.streamed)
+	p := NewParser(output, errs, test.streamed, test.genericHeader)
 	defer p.Stop()
 
 	for stepIdx, step := range test.steps {

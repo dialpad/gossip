@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"encoding/json"
 )
 
 // A representation of a SIP method.
@@ -62,6 +63,9 @@ type SipMessage interface {
 
 	// Set the body of the message.
 	SetBody(body string)
+
+	// Returns the MarshalledJson
+	MarshalJSON() ([]byte, error)
 }
 
 // A shared type for holding headers and their ordering.
@@ -380,4 +384,40 @@ func (response *Response) GetBody() string {
 
 func (response *Response) SetBody(body string) {
 	response.Body = body
+}
+
+func (request *Request) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Method Method
+		Recipient Uri
+		SipVersion string
+		Headers []SipHeader
+		Body string
+		Type string
+	}{
+		Method: request.Method,
+		Recipient: request.Recipient,
+		SipVersion: request.SipVersion,
+		Headers: request.AllHeaders(),
+		Body: request.Body,
+		Type: "request",
+	})
+}
+
+func (response *Response) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		SipVersion string
+		StatusCode uint16
+		Reason string
+		Headers []SipHeader
+		Body string
+		Type string
+	}{
+		SipVersion: response.SipVersion,
+		StatusCode: response.StatusCode,
+		Reason: response.Reason,
+		Headers: response.AllHeaders(),
+		Body: response.Body,
+		Type: "response",
+	})
 }

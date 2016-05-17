@@ -4,8 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-
-	"github.com/stefankopieczek/gossip/log"
+	"github.com/FireSpotter/gossip/log"
 )
 
 // parserBuffer is a specialized buffer for use in the parser package.
@@ -41,28 +40,28 @@ func (pb *parserBuffer) NextLine() (response string, err error) {
 	var data string
 	var b byte
 
-	// There has to be a better way!
-	for {
-		data, err = pb.reader.ReadString('\r')
-		if err != nil {
-			return
-		}
 
-		buffer.WriteString(data)
-
-		b, err = pb.reader.ReadByte()
-		if err != nil {
-			return
+	var byteLine []byte
+	for b != '\r' && b != '\n' {
+			b, err = pb.reader.ReadByte()
+			if err != nil {
+				return
+				}
+			byteLine = append(byteLine, b)
 		}
-
-		buffer.WriteByte(b)
-		if b == '\n' {
-			response = buffer.String()
-			response = response[:len(response)-2]
-			log.Debug("Parser buffer returns line '%s'", response)
-			return
+	if b == '\r' && pb.reader.Buffered() > 0 {
+			b, err = pb.reader.ReadByte()
+			if err != nil {
+				return
+				}
 		}
-	}
+	data = string(byteLine)
+	buffer.WriteString(data)
+
+
+	response = buffer.String()
+	response = response[:len(response)-1]
+	return
 }
 
 // Block until the buffer contains at least n characters.
@@ -71,7 +70,7 @@ func (pb *parserBuffer) NextChunk(n int) (response string, err error) {
 	var data []byte = make([]byte, n)
 
 	var read int
-	for total := 0; total < n; {
+	for total := 0; total < n && pb.reader.Buffered() > 0; {
 		read, err = pb.reader.Read(data[total:])
 		total += read
 		if err != nil {
