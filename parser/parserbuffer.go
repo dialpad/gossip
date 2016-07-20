@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+
 	"github.com/FireSpotter/gossip/log"
 )
 
@@ -40,24 +41,22 @@ func (pb *parserBuffer) NextLine() (response string, err error) {
 	var data string
 	var b byte
 
-
 	var byteLine []byte
 	for b != '\r' && b != '\n' {
-			b, err = pb.reader.ReadByte()
-			if err != nil {
-				return
-				}
-			byteLine = append(byteLine, b)
+		b, err = pb.reader.ReadByte()
+		if err != nil {
+			return
 		}
+		byteLine = append(byteLine, b)
+	}
 	if b == '\r' && pb.reader.Buffered() > 0 {
-			b, err = pb.reader.ReadByte()
-			if err != nil {
-				return
-				}
+		b, err = pb.reader.ReadByte()
+		if err != nil {
+			return
 		}
+	}
 	data = string(byteLine)
 	buffer.WriteString(data)
-
 
 	response = buffer.String()
 	response = response[:len(response)-1]
@@ -67,15 +66,16 @@ func (pb *parserBuffer) NextLine() (response string, err error) {
 // Block until the buffer contains at least n characters.
 // Return precisely those n characters, then delete them from the buffer.
 func (pb *parserBuffer) NextChunk(n int) (response string, err error) {
-	var data []byte = make([]byte, n)
+	var data []byte
+	var b byte
 
-	var read int
 	for total := 0; total < n && pb.reader.Buffered() > 0; {
-		read, err = pb.reader.Read(data[total:])
-		total += read
+		b, err = pb.reader.ReadByte()
 		if err != nil {
 			return
 		}
+		data = append(data, b)
+		total += 1
 	}
 
 	response = string(data)
