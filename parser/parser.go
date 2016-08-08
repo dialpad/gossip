@@ -116,7 +116,6 @@ func (p *parser) Write(data []byte) (n int, err error) {
 func (p *parser) Stop() {
 	log.Debug("Stopping parser %p", p)
 	p.stopped = true
-	//p.input.Stop()
 	log.Debug("Parser %p stopped", p)
 }
 
@@ -132,7 +131,6 @@ func (p *parser) Parse() {
 	var message base.SipMessage
 
 	for p.input.index < p.input.Length {
-		// Parse the StartLine.
 		startLine, err := p.input.NextLine()
 
 		if err != nil {
