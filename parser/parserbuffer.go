@@ -1,26 +1,15 @@
 package parser
 
-import (
-	"bufio"
-	"bytes"
-	"io"
-
-	"github.com/FireSpotter/gossip/log"
-)
+import "github.com/FireSpotter/gossip/log"
 
 // parserBuffer is a specialized buffer for use in the parser package.
 // It is written to via the non-blocking Write.
 // It exposes various blocking read methods, which wait until the requested
 // data is avaiable, and then return it.
 type parserBuffer struct {
-	io.Writer
-	buffer bytes.Buffer
-
-	// Wraps parserBuffer.pipeReader
-	reader *bufio.Reader
-
-	// Don't access this directly except when closing.
-	pipeReader *io.PipeReader
+	Msg    []byte
+	index  int
+	Length int
 }
 
 // Create a new parserBuffer object (see struct comment for object details).
@@ -28,8 +17,7 @@ type parserBuffer struct {
 // until the Dispose() method is called.
 func newParserBuffer() *parserBuffer {
 	var pb parserBuffer
-	pb.pipeReader, pb.Writer = io.Pipe()
-	pb.reader = bufio.NewReader(pb.pipeReader)
+	pb.index = 0
 	return &pb
 }
 
@@ -37,29 +25,18 @@ func newParserBuffer() *parserBuffer {
 // Return the line, excluding the terminal CRLF, and delete it from the buffer.
 // Returns an error if the parserbuffer has been stopped.
 func (pb *parserBuffer) NextLine() (response string, err error) {
-	var buffer bytes.Buffer
-	var data string
 	var b byte
-
 	var byteLine []byte
-	for b != '\r' && b != '\n' {
-		b, err = pb.reader.ReadByte()
-		if err != nil {
-			return
-		}
-		byteLine = append(byteLine, b)
-	}
-	if b == '\r' && pb.reader.Buffered() > 0 {
-		b, err = pb.reader.ReadByte()
-		if err != nil {
-			return
-		}
-	}
-	data = string(byteLine)
-	buffer.WriteString(data)
+	for b != '\r' && b != '\n' && pb.index < pb.Length {
+		b = pb.Msg[pb.index]
 
-	response = buffer.String()
-	response = response[:len(response)-1]
+		byteLine = append(byteLine, b)
+		pb.index += 1
+	}
+	if b == '\r' {
+		pb.index += 1
+	}
+	response = string(byteLine)
 	return
 }
 
@@ -69,21 +46,14 @@ func (pb *parserBuffer) NextChunk(n int) (response string, err error) {
 	var data []byte
 	var b byte
 
-	for total := 0; total < n && pb.reader.Buffered() > 0; {
-		b, err = pb.reader.ReadByte()
-		if err != nil {
-			return
-		}
+	for total := 0; total < n && pb.index < pb.Length; {
+		b = pb.Msg[pb.index]
 		data = append(data, b)
+		pb.index += 1
 		total += 1
 	}
 
 	response = string(data)
 	log.Debug("Parser buffer returns chunk '%s'", response)
 	return
-}
-
-// Stop the parser buffer.
-func (pb *parserBuffer) Stop() {
-	pb.pipeReader.Close()
 }

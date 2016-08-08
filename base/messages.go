@@ -2,9 +2,9 @@ package base
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
-	"encoding/json"
 )
 
 // A representation of a SIP method.
@@ -43,20 +43,20 @@ type SipMessage interface {
 	String() string
 
 	// Adds a header to this message.
-	AddHeader(h SipHeader)
+	AddHeader(h GenericHeader)
 
 	// Returns a slice of all headers of the given type.
 	// If there are no headers of the requested type, returns an empty slice.
-	Headers(name string) []SipHeader
+	Headers(name string) []GenericHeader
 
 	// Return all headers attached to the message, as a slice.
-	AllHeaders() []SipHeader
+	AllHeaders() []GenericHeader
 
 	// Yields a short string representation of the message useful for logging.
 	Short() string
 
 	// Remove the specified header from the message.
-	RemoveHeader(header SipHeader) error
+	RemoveHeader(header GenericHeader) error
 
 	// Get the body of the message, as a string.
 	GetBody() string
@@ -71,14 +71,14 @@ type SipMessage interface {
 // A shared type for holding headers and their ordering.
 type headers struct {
 	// The logical SIP headers attached to this message.
-	headers map[string][]SipHeader
+	headers map[string][]GenericHeader
 
 	// The order the headers should be displayed in.
 	headerOrder []string
 }
 
 func newHeaders() (result headers) {
-	result.headers = make(map[string][]SipHeader)
+	result.headers = make(map[string][]GenericHeader)
 	return result
 }
 
@@ -98,40 +98,31 @@ func (h headers) String() string {
 }
 
 // Add the given header.
-func (hs *headers) AddHeader(h SipHeader) {
+func (hs *headers) AddHeader(h GenericHeader) {
 	if hs.headers == nil {
-		hs.headers = map[string][]SipHeader{}
+		hs.headers = map[string][]GenericHeader{}
 		hs.headerOrder = []string{}
 	}
 	name := h.Name()
 	if _, ok := hs.headers[name]; ok {
 		hs.headers[name] = append(hs.headers[name], h)
 	} else {
-		hs.headers[name] = []SipHeader{h}
+		hs.headers[name] = []GenericHeader{h}
 		hs.headerOrder = append(hs.headerOrder, name)
 	}
 }
 
 // Gets some headers.
-func (hs *headers) Headers(name string) []SipHeader {
+func (hs *headers) Headers(name string) []GenericHeader {
 	if hs.headers == nil {
-		hs.headers = map[string][]SipHeader{}
+		hs.headers = map[string][]GenericHeader{}
 		hs.headerOrder = []string{}
 	}
 	if headers, ok := hs.headers[name]; ok {
 		return headers
 	} else {
-		return []SipHeader{}
+		return []GenericHeader{}
 	}
-}
-
-// Copy all headers of one type from one message to another.
-// Appending to any headers that were already there.
-func CopyHeaders(name string, from, to SipMessage) {
-	for _, h := range from.Headers(name) {
-		to.AddHeader(h.Copy())
-	}
-
 }
 
 // A SIP request (c.f. RFC 3261 section 7.1).
@@ -155,7 +146,7 @@ type Request struct {
 	Body string
 }
 
-func NewRequest(method Method, recipient Uri, sipVersion string, headers []SipHeader, body string) (request *Request) {
+func NewRequest(method Method, recipient Uri, sipVersion string, headers []GenericHeader, body string) (request *Request) {
 	request = new(Request)
 	request.Method = method
 	request.SipVersion = sipVersion
@@ -195,16 +186,11 @@ func (request *Request) Short() string {
 		request.Recipient.String(),
 		request.SipVersion))
 
-	cseqs := request.Headers("CSeq")
-	if len(cseqs) > 0 {
-		buffer.WriteString(fmt.Sprintf(" (CSeq: %s)", (cseqs[0].(*CSeq)).String()))
-	}
-
 	return buffer.String()
 }
 
-func (request *Request) AllHeaders() []SipHeader {
-	allHeaders := make([]SipHeader, 0)
+func (request *Request) AllHeaders() []GenericHeader {
+	allHeaders := make([]GenericHeader, 0)
 	for _, key := range request.headers.headerOrder {
 		allHeaders = append(allHeaders, request.headers.headers[key]...)
 	}
@@ -212,7 +198,7 @@ func (request *Request) AllHeaders() []SipHeader {
 	return allHeaders
 }
 
-func (request *Request) RemoveHeader(header SipHeader) error {
+func (request *Request) RemoveHeader(header GenericHeader) error {
 	errNoMatch := fmt.Errorf("cannot remove header '%s' from request '%s' as it is not present",
 		header.String(), request.Short())
 	name := header.Name()
@@ -280,7 +266,7 @@ type Response struct {
 	Body string
 }
 
-func NewResponse(sipVersion string, statusCode uint16, reason string, headers []SipHeader, body string) (response *Response) {
+func NewResponse(sipVersion string, statusCode uint16, reason string, headers []GenericHeader, body string) (response *Response) {
 	response = new(Response)
 	response.SipVersion = sipVersion
 	response.StatusCode = statusCode
@@ -322,16 +308,11 @@ func (response *Response) Short() string {
 		response.StatusCode,
 		response.Reason))
 
-	cseqs := response.Headers("CSeq")
-	if len(cseqs) > 0 {
-		buffer.WriteString(fmt.Sprintf(" (CSeq: %s)", (cseqs[0].(*CSeq)).String()))
-	}
-
 	return buffer.String()
 }
 
-func (response *Response) AllHeaders() []SipHeader {
-	allHeaders := make([]SipHeader, 0)
+func (response *Response) AllHeaders() []GenericHeader {
+	allHeaders := make([]GenericHeader, 0)
 	for _, key := range response.headers.headerOrder {
 		allHeaders = append(allHeaders, response.headers.headers[key]...)
 	}
@@ -339,7 +320,7 @@ func (response *Response) AllHeaders() []SipHeader {
 	return allHeaders
 }
 
-func (response *Response) RemoveHeader(header SipHeader) error {
+func (response *Response) RemoveHeader(header GenericHeader) error {
 	errNoMatch := fmt.Errorf("cannot remove header '%s' from response '%s' as it is not present",
 		header.String(), response.Short())
 	name := header.Name()
@@ -388,19 +369,19 @@ func (response *Response) SetBody(body string) {
 
 func (request *Request) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		Method Method
-		Recipient Uri
+		Method     Method
+		Recipient  Uri
 		SipVersion string
-		Headers []SipHeader
-		Body string
-		Type string
+		Headers    []GenericHeader
+		Body       string
+		Type       string
 	}{
-		Method: request.Method,
-		Recipient: request.Recipient,
+		Method:     request.Method,
+		Recipient:  request.Recipient,
 		SipVersion: request.SipVersion,
-		Headers: request.AllHeaders(),
-		Body: request.Body,
-		Type: "request",
+		Headers:    request.AllHeaders(),
+		Body:       request.Body,
+		Type:       "request",
 	})
 }
 
@@ -408,16 +389,16 @@ func (response *Response) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		SipVersion string
 		StatusCode uint16
-		Reason string
-		Headers []SipHeader
-		Body string
-		Type string
+		Reason     string
+		Headers    []GenericHeader
+		Body       string
+		Type       string
 	}{
 		SipVersion: response.SipVersion,
 		StatusCode: response.StatusCode,
-		Reason: response.Reason,
-		Headers: response.AllHeaders(),
-		Body: response.Body,
-		Type: "response",
+		Reason:     response.Reason,
+		Headers:    response.AllHeaders(),
+		Body:       response.Body,
+		Type:       "response",
 	})
 }
