@@ -216,6 +216,10 @@ func (p *parser) Parse() {
 		// Use the content-length header to identify the end of the message.
 		contentLengthHeaders := message.Headers("content-length")
 		if len(contentLengthHeaders) == 0 {
+			// Adding this for the case of shortened header names in polycom
+			contentLengthHeaders = message.Headers("l")
+		}
+		if len(contentLengthHeaders) == 0 {
 			p.terminalErr = fmt.Errorf("Missing required content-length header on message %s", message.Short())
 			p.errs = p.terminalErr
 			break
