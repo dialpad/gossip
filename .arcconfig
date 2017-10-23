@@ -1,4 +1,4 @@
 {
   "project_id": "gossip",
-  "conduit_uri": "http://phabricator.ubermanage.net"
+  "conduit_uri": "https://phabricator.fspot.us"
 }
