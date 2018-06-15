@@ -6,6 +6,7 @@ import (
 )
 
 import "bytes"
+import "encoding/json"
 import "fmt"
 import "strconv"
 import "strings"
@@ -258,6 +259,10 @@ func NewParams() Params {
 // Returns the entire parameter map.
 func (p *params) Items() map[string]MaybeString {
 	return p.params
+}
+
+func (p *params) MarshalJSON() ([]byte, error) {
+    return json.Marshal(p.params)
 }
 
 // Returns a slice of keys, in order.
