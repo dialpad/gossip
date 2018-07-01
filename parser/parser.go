@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"github.com/FireSpotter/gossip/base"
-	"github.com/FireSpotter/gossip/log"
+	"github.com/dialpad/gossip/base"
+	"github.com/dialpad/gossip/log"
 )
 
 import (

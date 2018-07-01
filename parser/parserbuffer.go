@@ -1,6 +1,6 @@
 package parser
 
-import "github.com/FireSpotter/gossip/log"
+import "github.com/dialpad/gossip/log"
 
 // parserBuffer is a specialized buffer for use in the parser package.
 // It is written to via the non-blocking Write.
