@@ -37,6 +37,18 @@ const (
 	REFER     Method = "REFER"
 )
 
+var Methods = map[string]Method{
+	"INVITE"    : INVITE,
+    "ACK"       : ACK,
+	"CANCEL"    : CANCEL,
+	"BYE"       : BYE,
+	"REGISTER"  : REGISTER,
+	"OPTIONS"   : OPTIONS,
+	"SUBSCRIBE" : SUBSCRIBE,
+	"NOTIFY"    : NOTIFY,
+	"REFER"     : REFER,
+}
+
 // Internal representation of a SIP message - either a Request or a Response.
 type SipMessage interface {
 	// Yields a flat, string representation of the SIP message suitable for sending out over the wire.
