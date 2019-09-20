@@ -325,6 +325,12 @@ func parseRequestLine(requestLine string) (
 	recipient, err = ParseUri(parts[1])
 	sipVersion = parts[2]
 
+	// Due to TEL-9692 IPv6 SIP parsing can lead to whacky results for method.
+	if val, ok := base.Methods[string(method)]; !ok {
+		err = fmt.Errorf("Invalid METHOD in request line: '%s'", string(method))
+		return
+	}
+
 	switch recipient.(type) {
 	case *base.WildcardUri:
 		err = fmt.Errorf("wildcard URI '*' not permitted in request line: '%s'", requestLine)
