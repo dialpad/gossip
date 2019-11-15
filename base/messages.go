@@ -35,7 +35,29 @@ const (
 	SUBSCRIBE Method = "SUBSCRIBE"
 	NOTIFY    Method = "NOTIFY"
 	REFER     Method = "REFER"
+	INFO      Method = "INFO"
+	UPDATE    Method = "UPDATE"
+	PRACK     Method = "PRACK"
+	PUBLISH   Method = "PUBLISH"
+	MESSAGE   Method = "MESSAGE"
 )
+
+var Methods = map[string]Method{
+	"INVITE":    INVITE,
+	"ACK":       ACK,
+	"CANCEL":    CANCEL,
+	"BYE":       BYE,
+	"REGISTER":  REGISTER,
+	"OPTIONS":   OPTIONS,
+	"SUBSCRIBE": SUBSCRIBE,
+	"NOTIFY":    NOTIFY,
+	"REFER":     REFER,
+	"INFO":      INFO,
+	"UPDATE":    UPDATE,
+	"PRACK":     PRACK,
+	"PUBLISH":   PUBLISH,
+	"MESSAGE":   MESSAGE,
+}
 
 // Internal representation of a SIP message - either a Request or a Response.
 type SipMessage interface {
