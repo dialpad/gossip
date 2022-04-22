@@ -69,7 +69,8 @@ func ParseMessage(msgData []byte, useGenericHeaders bool) (msg base.SipMessage, 
 // If streamed=true, Write calls can contain a portion of a full SIP message.
 // The end of one message and the start of the next may be provided in a single call to Write.
 // When streamed=true, all SIP messages provided must have a Content-Length header.
-// SIP messages without a Content-Length will cause the parser to permanently stop, and will result in an error on the errs chan.
+// SIP messages without a Content-Length used to cause the parser to permanently stop, and result in an error on the errs chan.
+// After the fix for TEL-14941, it has been made more permissive and treated as if content-header=0
 
 // 'streamed' should be set to true whenever the caller cannot reliably identify the starts and ends of messages from the transport frames,
 // e.g. when using streamed protocols such as TCP.
@@ -220,9 +221,12 @@ func (p *parser) Parse() {
 			contentLengthHeaders = message.Headers("l")
 		}
 		if len(contentLengthHeaders) == 0 {
+			/* TEL-14941: Treat no content-header as content-header=0
 			p.terminalErr = fmt.Errorf("Missing required content-length header on message %s", message.Short())
 			p.errs = p.terminalErr
 			break
+			*/
+			contentLengthHeaders = []base.GenericHeader{base.GenericHeader{"content-length", "0"}}
 		} else if len(contentLengthHeaders) > 1 {
 			var errbuf bytes.Buffer
 			errbuf.WriteString("Multiple content-length headers on message ")
