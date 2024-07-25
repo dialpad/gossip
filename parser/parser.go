@@ -1,17 +1,16 @@
 package parser
 
 import (
-	"github.com/dialpad/gossip/base"
-	"github.com/dialpad/gossip/log"
-)
-
-import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/dialpad/gossip/base"
+	"github.com/dialpad/gossip/log"
 )
 
 // The whitespace characters recognised by the Augmented Backus-Naur Form syntax
@@ -315,8 +314,9 @@ func isResponse(startLine string) bool {
 }
 
 // Parse the first line of a SIP request, e.g:
-//   INVITE bob@example.com SIP/2.0
-//   REGISTER jane@telco.com SIP/1.0
+//
+//	INVITE bob@example.com SIP/2.0
+//	REGISTER jane@telco.com SIP/1.0
 func parseRequestLine(requestLine string) (
 	method base.Method, recipient base.Uri, sipVersion string, err error) {
 	parts := strings.Split(requestLine, " ")
@@ -344,8 +344,9 @@ func parseRequestLine(requestLine string) (
 }
 
 // Parse the first line of a SIP response, e.g:
-//   SIP/2.0 200 OK
-//   SIP/1.0 403 Forbidden
+//
+//	SIP/2.0 200 OK
+//	SIP/1.0 403 Forbidden
 func parseStatusLine(statusLine string) (
 	sipVersion string, statusCode uint16, reasonPhrase string, err error) {
 	parts := strings.Split(statusLine, " ")
@@ -507,7 +508,13 @@ func ParseSipUri(uriStr string) (uri base.SipUri, err error) {
 // The port may or may not be present, so we represent it with a *uint16,
 // and return 'nil' if no port was present.
 func parseHostPort(rawText string) (host string, port *uint16, err error) {
-	colonIdx := strings.LastIndex(rawText, ":")
+	ipv6_re := regexp.MustCompile(`(\[[0-9a-zA-Z:]+\])(:([0-9]+))*`)
+	ipv6_matches := ipv6_re.FindStringSubmatch(rawText)
+	colonIdx := -1
+	// If rawText has an IPv4 address or an IPv6 address with port.
+	if (ipv6_matches == nil) || (ipv6_matches[3] != "") {
+		colonIdx = strings.LastIndex(rawText, ":")
+	}
 	if colonIdx == -1 {
 		host = rawText
 		return
@@ -1007,6 +1014,7 @@ func parseAddressValues(addresses string) (
 //   - a parsed SipUri object
 //   - a map containing any header parameters present
 //   - the error object
+//
 // See RFC 3261 section 20.10 for details on parsing an address.
 // Note that this method will not accept a comma-separated list of addresses;
 // addresses in that form should be handled by parseAddressValues.
