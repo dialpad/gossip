@@ -508,7 +508,7 @@ func ParseSipUri(uriStr string) (uri base.SipUri, err error) {
 // The port may or may not be present, so we represent it with a *uint16,
 // and return 'nil' if no port was present.
 func parseHostPort(rawText string) (host string, port *uint16, err error) {
-	ipv6_re := regexp.MustCompile(`(\[[0-9a-zA-Z:.]+\])(:([0-9]+))*`)
+	ipv6_re := regexp.MustCompile(`(\[[0-9a-zA-Z:.]+\])(:([0-9]+))?`)
 	ipv6_matches := ipv6_re.FindStringSubmatch(rawText)
 	colonIdx := -1
 	// If rawText has an IPv4 address or an IPv6 address with port.
