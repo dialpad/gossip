@@ -3,7 +3,7 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"regexp"
+	"net"
 	"strconv"
 	"strings"
 	"unicode"
@@ -508,23 +508,25 @@ func ParseSipUri(uriStr string) (uri base.SipUri, err error) {
 // The port may or may not be present, so we represent it with a *uint16,
 // and return 'nil' if no port was present.
 func parseHostPort(rawText string) (host string, port *uint16, err error) {
-	ipv6_re := regexp.MustCompile(`(\[[0-9a-zA-Z:.]+\])(:([0-9]+))?`)
-	ipv6_matches := ipv6_re.FindStringSubmatch(rawText)
-	colonIdx := -1
-	// If rawText has an IPv4 address or an IPv6 address with port.
-	if (ipv6_matches == nil) || (ipv6_matches[3] != "") {
-		colonIdx = strings.LastIndex(rawText, ":")
-	}
-	if colonIdx == -1 {
+	host_str, port_str, func_err := net.SplitHostPort(rawText)
+
+	if func_err != nil {
+		// Failed to parse out a port number. Assume it's just a host passed in.
 		host = rawText
 		return
 	}
 
+	if rawText[0] == '[' {
+		// If input starts with "[", assume it's an IPv6 address.
+		host_str = "[" + host_str + "]"
+	}
+
+	host = host_str
+
 	// Surely there must be a better way..!
 	var portRaw64 uint64
 	var portRaw16 uint16
-	host = rawText[:colonIdx]
-	portRaw64, err = strconv.ParseUint(rawText[colonIdx+1:], 10, 16)
+	portRaw64, err = strconv.ParseUint(port_str, 10, 16)
 	portRaw16 = uint16(portRaw64)
 	port = &portRaw16
 
