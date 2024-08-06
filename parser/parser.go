@@ -1,17 +1,16 @@
 package parser
 
 import (
-	"github.com/dialpad/gossip/base"
-	"github.com/dialpad/gossip/log"
-)
-
-import (
 	"bytes"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/dialpad/gossip/base"
+	"github.com/dialpad/gossip/log"
 )
 
 // The whitespace characters recognised by the Augmented Backus-Naur Form syntax
@@ -315,8 +314,9 @@ func isResponse(startLine string) bool {
 }
 
 // Parse the first line of a SIP request, e.g:
-//   INVITE bob@example.com SIP/2.0
-//   REGISTER jane@telco.com SIP/1.0
+//
+//	INVITE bob@example.com SIP/2.0
+//	REGISTER jane@telco.com SIP/1.0
 func parseRequestLine(requestLine string) (
 	method base.Method, recipient base.Uri, sipVersion string, err error) {
 	parts := strings.Split(requestLine, " ")
@@ -344,8 +344,9 @@ func parseRequestLine(requestLine string) (
 }
 
 // Parse the first line of a SIP response, e.g:
-//   SIP/2.0 200 OK
-//   SIP/1.0 403 Forbidden
+//
+//	SIP/2.0 200 OK
+//	SIP/1.0 403 Forbidden
 func parseStatusLine(statusLine string) (
 	sipVersion string, statusCode uint16, reasonPhrase string, err error) {
 	parts := strings.Split(statusLine, " ")
@@ -507,17 +508,25 @@ func ParseSipUri(uriStr string) (uri base.SipUri, err error) {
 // The port may or may not be present, so we represent it with a *uint16,
 // and return 'nil' if no port was present.
 func parseHostPort(rawText string) (host string, port *uint16, err error) {
-	colonIdx := strings.LastIndex(rawText, ":")
-	if colonIdx == -1 {
+	host_str, port_str, func_err := net.SplitHostPort(rawText)
+
+	if func_err != nil {
+		// Failed to parse out a port number. Assume it's just a host passed in.
 		host = rawText
 		return
 	}
 
+	if rawText[0] == '[' {
+		// If input starts with "[", assume it's an IPv6 address.
+		host_str = "[" + host_str + "]"
+	}
+
+	host = host_str
+
 	// Surely there must be a better way..!
 	var portRaw64 uint64
 	var portRaw16 uint16
-	host = rawText[:colonIdx]
-	portRaw64, err = strconv.ParseUint(rawText[colonIdx+1:], 10, 16)
+	portRaw64, err = strconv.ParseUint(port_str, 10, 16)
 	portRaw16 = uint16(portRaw64)
 	port = &portRaw16
 
@@ -1007,6 +1016,7 @@ func parseAddressValues(addresses string) (
 //   - a parsed SipUri object
 //   - a map containing any header parameters present
 //   - the error object
+//
 // See RFC 3261 section 20.10 for details on parsing an address.
 // Note that this method will not accept a comma-separated list of addresses;
 // addresses in that form should be handled by parseAddressValues.
