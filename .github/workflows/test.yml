@@ -1,0 +1,15 @@
+name: Build and Deploy
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Organization Action
+        uses: dialpad/experimental/amigolin/actions/hello@master
+        with:
+          api-key: 12345
+          environment: 'production'
+        id: org_action_one
